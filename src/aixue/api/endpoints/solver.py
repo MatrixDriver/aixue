@@ -79,16 +79,23 @@ async def solve_problem(
         media_type = image.content_type or "image/png"
 
     solver = SolverService()
-    result = await solver.solve(
-        image=image_data,
-        media_type=media_type,
-        text=text,
-        subject=subject,
-        mode=mode,
-        session_id=session_id,
-        user_profile=_user_profile(current_user),
-        db=db,
-    )
+    try:
+        result = await solver.solve(
+            image=image_data,
+            media_type=media_type,
+            text=text,
+            subject=subject,
+            mode=mode,
+            session_id=session_id,
+            user_profile=_user_profile(current_user),
+            db=db,
+        )
+    except ValueError as e:
+        logger.warning("解题服务异常: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(e),
+        ) from e
 
     if "error" in result and result["error"]:
         raise HTTPException(
@@ -108,12 +115,19 @@ async def follow_up(
 ) -> FollowUpResponse:
     """多轮追问。"""
     solver = SolverService()
-    result = await solver.follow_up(
-        session_id=session_id,
-        message_text=message,
-        user_profile=_user_profile(current_user),
-        db=db,
-    )
+    try:
+        result = await solver.follow_up(
+            session_id=session_id,
+            message_text=message,
+            user_profile=_user_profile(current_user),
+            db=db,
+        )
+    except ValueError as e:
+        logger.warning("追问服务异常: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(e),
+        ) from e
 
     if "error" in result and result["error"]:
         raise HTTPException(

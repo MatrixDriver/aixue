@@ -3,8 +3,9 @@
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from aixue.api.router import api_router
 from aixue.config import Settings
@@ -50,6 +51,14 @@ app.add_middleware(
 )
 
 app.include_router(api_router, prefix="/api")
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    """全局异常处理：确保所有未处理异常返回 JSON 格式，便于前端解析。"""
+    logger.exception("未处理异常: %s %s", request.method, request.url.path)
+    detail = str(exc) if str(exc) else "服务器内部错误，请稍后重试"
+    return JSONResponse(status_code=500, content={"detail": detail})
 
 
 @app.get("/health")

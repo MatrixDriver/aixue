@@ -53,6 +53,18 @@ class LLMService:
             max_tokens=max_tokens,
             messages=all_messages,
         )
+
+        if not response.choices:
+            logger.error(
+                "LLM 返回空 choices: model=%s, id=%s, usage=%s",
+                model,
+                getattr(response, "id", None),
+                getattr(response, "usage", None),
+            )
+            raise ValueError(
+                "LLM 未返回有效内容（choices 为空），可能是模型暂时不可用或内容被过滤，请重试"
+            )
+
         content = response.choices[0].message.content or ""
         usage = response.usage
         if usage:
