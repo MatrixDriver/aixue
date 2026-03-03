@@ -21,7 +21,7 @@ class LLMService:
     def __init__(self) -> None:
         self.settings = Settings()
         self.client = AsyncOpenAI(
-            api_key=self.settings.anthropic_api_key,
+            api_key=self.settings.openrouter_api_key,
             base_url=self.settings.openrouter_base_url,
         )
 

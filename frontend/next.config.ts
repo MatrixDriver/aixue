@@ -14,7 +14,7 @@ const nextConfig: NextConfig = {
   },
   // 代理超时：图片 OCR + LLM 解题可能需要较长时间
   experimental: {
-    proxyTimeout: 180_000, // 180 秒
+    proxyTimeout: 300_000, // 300 秒，与 axios timeout 保持一致
   },
   // react-katex 使用 CommonJS，需要 transpile
   transpilePackages: ["react-katex"],

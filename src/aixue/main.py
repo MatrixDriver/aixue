@@ -44,8 +44,8 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # MVP 阶段允许所有来源
-    allow_credentials=True,
+    allow_origins=["*"],  # MVP 阶段允许所有来源（前端通过 Next.js 代理访问）
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -56,9 +56,8 @@ app.include_router(api_router, prefix="/api")
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """全局异常处理：确保所有未处理异常返回 JSON 格式，便于前端解析。"""
-    logger.exception("未处理异常: %s %s", request.method, request.url.path)
-    detail = str(exc) if str(exc) else "服务器内部错误，请稍后重试"
-    return JSONResponse(status_code=500, content={"detail": detail})
+    logger.exception("未处理异常: %s %s - %s", request.method, request.url.path, exc)
+    return JSONResponse(status_code=500, content={"detail": "服务器内部错误，请稍后重试"})
 
 
 @app.get("/health")

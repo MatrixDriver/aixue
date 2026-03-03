@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://localhost/aixue"
 
     # LLM (OpenRouter)
-    anthropic_api_key: str = ""  # OpenRouter API Key
+    openrouter_api_key: str = ""
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
     google_api_key: str = ""
     openai_api_key: str = ""
@@ -30,4 +30,4 @@ class Settings(BaseSettings):
     upload_dir: str = "/app/uploads"
     max_image_size: int = 5 * 1024 * 1024  # 5MB
 
-    model_config = {"env_file": ".env"}
+    model_config = {"env_file": ".env", "extra": "ignore"}

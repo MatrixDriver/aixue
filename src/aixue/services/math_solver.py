@@ -93,8 +93,8 @@ class MathSolver:
                     }
                 )
             else:
-                # 苏格拉底模式或无 SymPy 结果时不做严格验证
-                verified = sympy_result is None
+                # 苏格拉底模式或无 SymPy 结果时跳过验证
+                verified = False
                 break
 
         return {

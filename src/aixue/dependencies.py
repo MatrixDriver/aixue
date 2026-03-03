@@ -25,16 +25,16 @@ async def get_current_user(
     token = credentials.credentials
     try:
         user_id = decode_access_token(token)
-    except jwt.ExpiredSignatureError:
+    except jwt.ExpiredSignatureError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="令牌已过期",
-        )
-    except jwt.InvalidTokenError:
+        ) from e
+    except jwt.InvalidTokenError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="无效的令牌",
-        )
+        ) from e
 
     user = await get_user_by_id(db, user_id)
     if user is None:

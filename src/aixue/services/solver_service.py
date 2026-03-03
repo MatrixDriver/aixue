@@ -3,10 +3,13 @@
 import logging
 from typing import Any
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from aixue.models.message import Message
 from aixue.models.session import SolvingSession
+from aixue.prompts.system import build_system_prompt
 from aixue.services.general_solver import GeneralSolver
 from aixue.services.llm_service import LLMService
 from aixue.services.math_solver import MathSolver
@@ -108,9 +111,6 @@ class SolverService:
         Returns:
             响应结果
         """
-        from sqlalchemy import select
-        from sqlalchemy.orm import selectinload
-
         # 获取会话和历史消息
         result = await db.execute(
             select(SolvingSession)
@@ -126,8 +126,6 @@ class SolverService:
             return {"error": "无权访问此会话"}
 
         # 构建历史消息上下文
-        from aixue.prompts.system import build_system_prompt
-
         system_prompt = build_system_prompt(
             student_name=user_profile.get("name", "同学"),
             grade=user_profile.get("grade", ""),
@@ -203,8 +201,6 @@ class SolverService:
     ) -> SolvingSession:
         """保存解题会话和消息到数据库。"""
         if session_id:
-            from sqlalchemy import select
-
             q = await db.execute(
                 select(SolvingSession).where(SolvingSession.id == session_id)
             )

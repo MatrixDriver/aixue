@@ -4,7 +4,7 @@ import asyncio
 import logging
 from typing import Any
 
-from sympy import N, latex, simplify, solve, symbols
+from sympy import N, latex, simplify, solve, symbols, sympify
 from sympy.parsing.latex import parse_latex
 
 from aixue.config import Settings
@@ -31,9 +31,7 @@ class MathVerifier:
         """
         try:
             result = await asyncio.wait_for(
-                asyncio.get_event_loop().run_in_executor(
-                    None, self._sympy_solve, question_latex
-                ),
+                asyncio.to_thread(self._sympy_solve, question_latex),
                 timeout=self.timeout,
             )
             return result
@@ -58,8 +56,8 @@ class MathVerifier:
             expr_str = step.get("expression", "")
             expected = step.get("expected_result", "")
             try:
-                result = await asyncio.get_event_loop().run_in_executor(
-                    None, self._verify_step, expr_str, expected
+                result = await asyncio.to_thread(
+                    self._verify_step, expr_str, expected
                 )
                 step["verified"] = result
             except Exception:
@@ -82,8 +80,8 @@ class MathVerifier:
         """
         try:
             result = await asyncio.wait_for(
-                asyncio.get_event_loop().run_in_executor(
-                    None, self._compare_answers, student_answer, correct_answer
+                asyncio.to_thread(
+                    self._compare_answers, student_answer, correct_answer
                 ),
                 timeout=self.timeout,
             )
@@ -103,24 +101,27 @@ class MathVerifier:
         """同步 SymPy 求解（在 executor 中运行）。"""
         try:
             expr = parse_latex(latex_expr)
-            # 尝试求解
             result = solve(expr)
+            if not result:
+                return None
             return {
                 "solved": True,
                 "result": result,
-                "latex": latex(result) if result else "",
+                "latex": latex(result),
             }
         except Exception:
-            # parse_latex 可能无法处理所有格式，降级处理
-            logger.debug("parse_latex 失败，尝试符号求解: %s", latex_expr[:50])
+            # parse_latex 可能无法处理所有格式，降级为 sympify 解析
+            logger.debug("parse_latex 失败，尝试 sympify: %s", latex_expr[:50])
             try:
                 x = symbols("x")
-                expr = parse_latex(latex_expr)
+                expr = sympify(latex_expr)
                 result = solve(expr, x)
+                if not result:
+                    return None
                 return {
                     "solved": True,
                     "result": result,
-                    "latex": latex(result) if result else "",
+                    "latex": latex(result),
                 }
             except Exception:
                 return None
