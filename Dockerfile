@@ -6,7 +6,7 @@ WORKDIR /app
 RUN pip install --no-cache-dir uv
 
 # 复制项目配置并安装依赖
-COPY pyproject.toml .
+COPY pyproject.toml uv.lock ./
 RUN uv sync --no-dev --no-install-project
 
 # 复制源代码
