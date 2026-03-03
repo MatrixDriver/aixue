@@ -169,11 +169,22 @@ class SolverService:
         media_type: str | None,
         text: str | None,
     ) -> str:
-        """题目识别：优先使用文本，否则用 OCR 识别图片。"""
+        """题目识别：图片 OCR + 用户文本合并。
+
+        - 仅文本: 直接返回
+        - 仅图片: OCR 识别
+        - 图片+文本: OCR 识别后，将用户文本作为补充指令拼接
+        """
+        ocr_text = ""
+        if image and media_type:
+            ocr_text = await self.ocr.recognize(image, media_type)
+
+        if ocr_text and text:
+            return f"{ocr_text}\n\n【用户补充说明】{text}"
+        if ocr_text:
+            return ocr_text
         if text:
             return text
-        if image and media_type:
-            return await self.ocr.recognize(image, media_type)
         return ""
 
     async def _save_session(

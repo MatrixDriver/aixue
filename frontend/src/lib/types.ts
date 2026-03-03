@@ -102,12 +102,25 @@ export interface SessionDetail extends SessionSummary {
   confidence?: number;
 }
 
-/** 解题响应 */
+/** 解题响应（后端扁平结构） */
 export interface SolveResponse {
   session_id: string;
-  message: Message;
-  verification_status: string;
-  confidence?: number;
+  subject: string;
+  question: string;
+  content: string;
+  mode: string;
+  verified: boolean;
+  attempts: number;
+  sympy_result?: string | null;
+  error?: string | null;
+}
+
+/** 追问响应 */
+export interface FollowUpResponse {
+  session_id: string;
+  content: string;
+  mode: string;
+  error?: string | null;
 }
 
 // --- 学情诊断相关 ---

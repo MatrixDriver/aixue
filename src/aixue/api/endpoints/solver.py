@@ -51,6 +51,14 @@ async def solve_problem(
 
     支持图片上传或文字输入，二者至少提供一个。
     """
+    logger.info(
+        "solve_problem 收到请求: image=%s, text=%s, subject=%s, mode=%s",
+        f"{image.filename}({image.content_type})" if image else None,
+        text[:50] if text else None,
+        subject,
+        mode,
+    )
+
     if image is None and text is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -62,6 +70,7 @@ async def solve_problem(
     media_type: str | None = None
     if image is not None:
         image_data = await image.read()
+        logger.info("图片数据读取成功: %d bytes", len(image_data))
         if len(image_data) > settings.max_image_size:
             raise HTTPException(
                 status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,

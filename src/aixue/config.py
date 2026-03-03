@@ -9,12 +9,13 @@ class Settings(BaseSettings):
     # 数据库
     database_url: str = "postgresql+asyncpg://localhost/aixue"
 
-    # LLM
-    anthropic_api_key: str = ""
-    anthropic_base_url: str | None = None  # 自定义 API 端点(OpenRouter 等)
+    # LLM (OpenRouter)
+    anthropic_api_key: str = ""  # OpenRouter API Key
+    openrouter_base_url: str = "https://openrouter.ai/api/v1"
+    google_api_key: str = ""
     openai_api_key: str = ""
-    llm_model: str = "claude-sonnet-4-6-20250514"
-    llm_model_light: str = "claude-haiku-4-5-20251001"
+    llm_model: str = "google/gemini-3.1-pro-preview"
+    llm_model_light: str = "google/gemini-2.5-flash"
 
     # 认证
     secret_key: str = "change-me-in-production"

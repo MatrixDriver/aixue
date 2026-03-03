@@ -1,10 +1,10 @@
-"""LLM 服务封装：统一管理 Anthropic Claude API 调用。"""
+"""LLM 服务封装：通过 OpenRouter (OpenAI 兼容 API) 调用多种模型。"""
 
 import base64
 import logging
 from collections.abc import AsyncGenerator
 
-import anthropic
+from openai import AsyncOpenAI
 
 from aixue.config import Settings
 
@@ -12,14 +12,14 @@ logger = logging.getLogger(__name__)
 
 
 class LLMService:
-    """异步 LLM 服务，封装 Anthropic Messages API。"""
+    """异步 LLM 服务，通过 OpenRouter 的 OpenAI 兼容端点调用多模型。"""
 
     def __init__(self) -> None:
         self.settings = Settings()
-        kwargs: dict = {"api_key": self.settings.anthropic_api_key}
-        if self.settings.anthropic_base_url:
-            kwargs["base_url"] = self.settings.anthropic_base_url
-        self.client = anthropic.AsyncAnthropic(**kwargs)
+        self.client = AsyncOpenAI(
+            api_key=self.settings.anthropic_api_key,
+            base_url=self.settings.openrouter_base_url,
+        )
 
     async def chat(
         self,
@@ -40,22 +40,27 @@ class LLMService:
             LLM 生成的文本内容
         """
         model = model or self.settings.llm_model
-        kwargs: dict = {
-            "model": model,
-            "max_tokens": max_tokens,
-            "messages": messages,
-        }
-        if system:
-            kwargs["system"] = system
 
-        logger.info("LLM 请求: model=%s, messages=%d条", model, len(messages))
-        response = await self.client.messages.create(**kwargs)
-        content = response.content[0].text
-        logger.info(
-            "LLM 响应: tokens(in=%d, out=%d)",
-            response.usage.input_tokens,
-            response.usage.output_tokens,
+        # 如果有 system prompt，插入到消息列表最前面
+        all_messages = []
+        if system:
+            all_messages.append({"role": "system", "content": system})
+        all_messages.extend(self._normalize_messages(messages))
+
+        logger.info("LLM 请求: model=%s, messages=%d条", model, len(all_messages))
+        response = await self.client.chat.completions.create(
+            model=model,
+            max_tokens=max_tokens,
+            messages=all_messages,
         )
+        content = response.choices[0].message.content or ""
+        usage = response.usage
+        if usage:
+            logger.info(
+                "LLM 响应: tokens(in=%d, out=%d)",
+                usage.prompt_tokens,
+                usage.completion_tokens,
+            )
         return content
 
     async def chat_stream(
@@ -67,18 +72,23 @@ class LLMService:
     ) -> AsyncGenerator[str, None]:
         """流式发送消息，逐块返回文本。"""
         model = model or self.settings.llm_model
-        kwargs: dict = {
-            "model": model,
-            "max_tokens": max_tokens,
-            "messages": messages,
-        }
+
+        all_messages = []
         if system:
-            kwargs["system"] = system
+            all_messages.append({"role": "system", "content": system})
+        all_messages.extend(self._normalize_messages(messages))
 
         logger.info("LLM 流式请求: model=%s", model)
-        async with self.client.messages.stream(**kwargs) as stream:
-            async for text in stream.text_stream:
-                yield text
+        stream = await self.client.chat.completions.create(
+            model=model,
+            max_tokens=max_tokens,
+            messages=all_messages,
+            stream=True,
+        )
+        async for chunk in stream:
+            delta = chunk.choices[0].delta if chunk.choices else None
+            if delta and delta.content:
+                yield delta.content
 
     async def recognize_image(
         self,
@@ -97,25 +107,49 @@ class LLMService:
             LLM 对图片内容的文字描述
         """
         image_b64 = base64.b64encode(image_data).decode("utf-8")
+        data_url = f"data:{media_type};base64,{image_b64}"
+
         messages = [
             {
                 "role": "user",
                 "content": [
-                    {
-                        "type": "image",
-                        "source": {
-                            "type": "base64",
-                            "media_type": media_type,
-                            "data": image_b64,
-                        },
-                    },
-                    {
-                        "type": "text",
-                        "text": prompt,
-                    },
+                    {"type": "image_url", "image_url": {"url": data_url}},
+                    {"type": "text", "text": prompt},
                 ],
             }
         ]
 
         logger.info("LLM 图片识别请求: media_type=%s, size=%d bytes", media_type, len(image_data))
         return await self.chat(messages, model=self.settings.llm_model)
+
+    def _normalize_messages(self, messages: list[dict]) -> list[dict]:
+        """标准化消息格式，确保兼容 OpenAI API。
+
+        处理 Anthropic 特有的多模态消息格式，转换为 OpenAI 格式。
+        """
+        normalized = []
+        for msg in messages:
+            role = msg["role"]
+            content = msg["content"]
+
+            if isinstance(content, str):
+                normalized.append({"role": role, "content": content})
+            elif isinstance(content, list):
+                # 多模态内容：转换 Anthropic image 格式为 OpenAI image_url 格式
+                parts = []
+                for block in content:
+                    if block.get("type") == "text":
+                        parts.append({"type": "text", "text": block["text"]})
+                    elif block.get("type") == "image":
+                        source = block["source"]
+                        data_url = f"data:{source['media_type']};base64,{source['data']}"
+                        parts.append({"type": "image_url", "image_url": {"url": data_url}})
+                    elif block.get("type") == "image_url":
+                        parts.append(block)
+                    else:
+                        parts.append(block)
+                normalized.append({"role": role, "content": parts})
+            else:
+                normalized.append({"role": role, "content": str(content)})
+
+        return normalized

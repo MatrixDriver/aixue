@@ -10,7 +10,15 @@ from aixue.config import Settings
 
 settings = Settings()
 
-engine = create_async_engine(settings.database_url, echo=False)
+
+def _fix_database_url(url: str) -> str:
+    """Railway 提供 postgresql:// 格式，asyncpg 需要 postgresql+asyncpg://"""
+    if url.startswith("postgresql://"):
+        return url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    return url
+
+
+engine = create_async_engine(_fix_database_url(settings.database_url), echo=False)
 
 AsyncSessionLocal = async_sessionmaker(
     engine,

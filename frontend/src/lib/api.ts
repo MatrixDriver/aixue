@@ -12,6 +12,7 @@ import type {
   UserUpdateRequest,
   UserStats,
   SolveResponse,
+  FollowUpResponse,
   SessionSummary,
   SessionDetail,
   DiagnosisResponse,
@@ -20,9 +21,14 @@ import type {
   ExamImportResponse,
 } from "./types";
 
+const API_BASE =
+  typeof window !== "undefined" && process.env.NEXT_PUBLIC_API_URL
+    ? `${process.env.NEXT_PUBLIC_API_URL}/api`
+    : "/api";
+
 const api = axios.create({
-  baseURL: "/api",
-  timeout: 60000, // 解题可能较慢，60s 超时
+  baseURL: API_BASE,
+  timeout: 180000, // 图片 OCR + 解题可能较慢，180s 超时
 });
 
 // 请求拦截器：自动附加 JWT Token
@@ -116,10 +122,10 @@ export async function solveQuestion(params: {
 export async function followUp(
   sessionId: string,
   message: string
-): Promise<SolveResponse> {
+): Promise<FollowUpResponse> {
   const formData = new FormData();
   formData.append("message", message);
-  const res = await api.post<SolveResponse>(
+  const res = await api.post<FollowUpResponse>(
     `/solve/${sessionId}/follow-up`,
     formData,
     { headers: { "Content-Type": "multipart/form-data" } }

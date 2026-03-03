@@ -6,7 +6,7 @@
 
 import { useState, useCallback } from "react";
 import { solveQuestion, followUp } from "@/lib/api";
-import type { Message, SolveMode } from "@/lib/types";
+import type { Message, SolveMode, SolveResponse, FollowUpResponse } from "@/lib/types";
 
 interface ChatState {
   messages: Message[];
@@ -46,26 +46,43 @@ export function useChat() {
       }));
 
       try {
-        let response;
+        let aiMsg: Message;
+        let newSessionId: string;
 
         if (state.sessionId) {
           // 追问模式
-          response = await followUp(state.sessionId, text);
+          const response: FollowUpResponse = await followUp(state.sessionId, text);
+          newSessionId = response.session_id;
+          aiMsg = {
+            id: `ai-${Date.now()}`,
+            session_id: response.session_id,
+            role: "assistant",
+            content: response.content,
+            created_at: new Date().toISOString(),
+          };
         } else {
           // 新题目
-          response = await solveQuestion({
+          const response: SolveResponse = await solveQuestion({
             text: text || undefined,
             image: image || undefined,
             subject: state.subject || undefined,
             mode: state.mode,
           });
+          newSessionId = response.session_id;
+          aiMsg = {
+            id: `ai-${Date.now()}`,
+            session_id: response.session_id,
+            role: "assistant",
+            content: response.content,
+            created_at: new Date().toISOString(),
+          };
         }
 
         // 添加 AI 回复
         setState((prev) => ({
           ...prev,
-          messages: [...prev.messages, response.message],
-          sessionId: response.session_id,
+          messages: [...prev.messages, aiMsg],
+          sessionId: newSessionId,
           loading: false,
         }));
       } catch (err: unknown) {
