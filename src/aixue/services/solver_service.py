@@ -173,11 +173,14 @@ class SolverService:
 
         - 仅文本: 直接返回
         - 仅图片: OCR 识别
-        - 图片+文本: OCR 识别后，将用户文本作为补充指令拼接
+        - 图片+文本: 将用户文本作为 OCR 聚焦提示（如 "第14题"），
+          让模型只识别指定题目，减少无关内容和处理时间
         """
         ocr_text = ""
         if image and media_type:
-            ocr_text = await self.ocr.recognize(image, media_type)
+            ocr_text = await self.ocr.recognize(
+                image, media_type, user_hint=text
+            )
 
         if ocr_text and text:
             return f"{ocr_text}\n\n【用户补充说明】{text}"

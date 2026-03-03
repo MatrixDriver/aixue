@@ -28,7 +28,7 @@ const API_BASE =
 
 const api = axios.create({
   baseURL: API_BASE,
-  timeout: 180000, // 图片 OCR + 解题可能较慢，180s 超时
+  timeout: 300000, // 图片 OCR + 解题可能较慢，300s 超时
 });
 
 // 请求拦截器：自动附加 JWT Token

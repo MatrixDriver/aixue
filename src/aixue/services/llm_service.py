@@ -121,6 +121,7 @@ class LLMService:
         image_data: bytes,
         media_type: str,
         prompt: str,
+        max_tokens: int = 4096,
     ) -> str:
         """多模态 LLM 图片识别。
 
@@ -128,6 +129,7 @@ class LLMService:
             image_data: 图片二进制数据
             media_type: MIME 类型，如 "image/png"
             prompt: 识别指令
+            max_tokens: 最大生成 token 数
 
         Returns:
             LLM 对图片内容的文字描述
@@ -146,7 +148,7 @@ class LLMService:
         ]
 
         logger.info("LLM 图片识别请求: media_type=%s, size=%d bytes", media_type, len(image_data))
-        return await self.chat(messages, model=self.settings.llm_model)
+        return await self.chat(messages, model=self.settings.llm_model, max_tokens=max_tokens)
 
     def _normalize_messages(self, messages: list[dict]) -> list[dict]:
         """标准化消息格式，确保兼容 OpenAI API。
