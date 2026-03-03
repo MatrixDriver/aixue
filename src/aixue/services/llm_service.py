@@ -1,5 +1,6 @@
 """LLM 服务封装：通过 OpenRouter (OpenAI 兼容 API) 调用多种模型。"""
 
+import asyncio
 import base64
 import logging
 from collections.abc import AsyncGenerator
@@ -7,6 +8,9 @@ from collections.abc import AsyncGenerator
 from openai import AsyncOpenAI
 
 from aixue.config import Settings
+
+_MAX_RETRIES = 3
+_RETRY_DELAYS = (1, 3, 5)  # 秒
 
 logger = logging.getLogger(__name__)
 
@@ -48,32 +52,42 @@ class LLMService:
         all_messages.extend(self._normalize_messages(messages))
 
         logger.info("LLM 请求: model=%s, messages=%d条", model, len(all_messages))
-        response = await self.client.chat.completions.create(
-            model=model,
-            max_tokens=max_tokens,
-            messages=all_messages,
-        )
 
-        if not response.choices:
-            logger.error(
-                "LLM 返回空 choices: model=%s, id=%s, usage=%s",
+        for attempt in range(_MAX_RETRIES):
+            response = await self.client.chat.completions.create(
+                model=model,
+                max_tokens=max_tokens,
+                messages=all_messages,
+            )
+
+            if response.choices:
+                content = response.choices[0].message.content or ""
+                usage = response.usage
+                if usage:
+                    logger.info(
+                        "LLM 响应: tokens(in=%d, out=%d)",
+                        usage.prompt_tokens,
+                        usage.completion_tokens,
+                    )
+                return content
+
+            # choices 为空，记录并重试
+            logger.warning(
+                "LLM 返回空 choices (第%d/%d次): model=%s, id=%s, usage=%s",
+                attempt + 1,
+                _MAX_RETRIES,
                 model,
                 getattr(response, "id", None),
                 getattr(response, "usage", None),
             )
-            raise ValueError(
-                "LLM 未返回有效内容（choices 为空），可能是模型暂时不可用或内容被过滤，请重试"
-            )
+            if attempt < _MAX_RETRIES - 1:
+                delay = _RETRY_DELAYS[attempt]
+                logger.info("等待 %d 秒后重试...", delay)
+                await asyncio.sleep(delay)
 
-        content = response.choices[0].message.content or ""
-        usage = response.usage
-        if usage:
-            logger.info(
-                "LLM 响应: tokens(in=%d, out=%d)",
-                usage.prompt_tokens,
-                usage.completion_tokens,
-            )
-        return content
+        raise ValueError(
+            f"LLM 连续 {_MAX_RETRIES} 次返回空内容，模型可能暂时不可用，请稍后重试"
+        )
 
     async def chat_stream(
         self,
