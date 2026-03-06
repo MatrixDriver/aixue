@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback } from "react";
 import { ImagePlus, Camera, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { compressImage } from "@/lib/image-utils";
 
 interface ImageUploadProps {
   onImageSelect: (file: File) => void;
@@ -23,16 +24,17 @@ export default function ImageUpload({
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
   const handleFile = useCallback(
-    (file: File) => {
+    async (file: File) => {
       if (!file.type.startsWith("image/")) return;
-      if (file.size > 5 * 1024 * 1024) {
-        alert("图片大小不能超过 5MB");
+      const compressed = await compressImage(file);
+      if (compressed.size > 10 * 1024 * 1024) {
+        alert("图片压缩后仍超过 10MB，请使用更小的图片");
         return;
       }
-      onImageSelect(file);
+      onImageSelect(compressed);
       const reader = new FileReader();
       reader.onloadend = () => setPreview(reader.result as string);
-      reader.readAsDataURL(file);
+      reader.readAsDataURL(compressed);
     },
     [onImageSelect]
   );

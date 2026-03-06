@@ -147,8 +147,9 @@ class LLMService:
             }
         ]
 
-        logger.info("LLM 图片识别请求: media_type=%s, size=%d bytes", media_type, len(image_data))
-        return await self.chat(messages, model=self.settings.llm_model, max_tokens=max_tokens)
+        ocr_model = self.settings.llm_model_ocr or self.settings.llm_model_light
+        logger.info("LLM 图片识别请求: media_type=%s, size=%d bytes, model=%s", media_type, len(image_data), ocr_model)
+        return await self.chat(messages, model=ocr_model, max_tokens=max_tokens)
 
     def _normalize_messages(self, messages: list[dict]) -> list[dict]:
         """标准化消息格式，确保兼容 OpenAI API。

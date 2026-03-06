@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     llm_model: str = "google/gemini-3.1-pro-preview"
     llm_model_light: str = "google/gemini-2.5-flash"
+    llm_model_ocr: str = ""  # OCR 模型，为空时回退到 llm_model_light
 
     # 认证
     secret_key: str = "change-me-in-production"
