@@ -7,28 +7,37 @@ from aixue.services.llm_service import LLMService
 logger = logging.getLogger(__name__)
 
 # 题目识别 Prompt（无指定题号）
-RECOGNITION_PROMPT = """请仔细识别这张图片中的题目内容。
+RECOGNITION_PROMPT = """请仔细识别这张图片中的题目内容，严格按照原始排版还原。
 
-要求:
-1. 完整提取题目文字，包括题号、条件、问题
-2. 数学公式用 LaTeX 格式表示（用 $ 包裹行内公式，$$ 包裹独立公式）
-3. 如有图形描述，用文字说明
-4. 保持原始题目结构和编号
-5. 只输出题目内容，不要添加解答
+输出格式要求（必须严格遵守）:
+1. 完整提取题目文字，包括题号、条件、问题和所有小问
+2. 数学公式**只能用 LaTeX 格式**:
+   - 行内公式用 $...$ 包裹，如 $F = ma$
+   - 独立公式用 $$...$$ 包裹
+   - **严禁使用 MathML、HTML 标签或任何 XML 格式**
+3. 表格用 Markdown 表格语法还原（| 列1 | 列2 | 格式）
+4. 保持原始的段落结构、缩进、编号层级（如 (1)(2)(3)）
+5. 如有图形/图表，用 [图: 简要描述] 标注位置
+6. 只输出题目内容，不要添加解答或分析
 
 如果图片模糊或无法识别，请说明无法识别的部分。"""
 
 # 题目识别 Prompt（有用户补充说明，聚焦特定题目）
-RECOGNITION_FOCUSED_PROMPT = """请仔细识别这张图片中的题目内容。
+RECOGNITION_FOCUSED_PROMPT = """请仔细识别这张图片中的题目内容，严格按照原始排版还原。
 
 用户指定: {user_hint}
 
-要求:
+输出格式要求（必须严格遵守）:
 1. 只提取用户指定的那道题目，忽略图片中的其他题目
 2. 完整提取该题的文字，包括题号、条件、问题和所有小问
-3. 数学公式用 LaTeX 格式表示（用 $ 包裹行内公式，$$ 包裹独立公式）
-4. 如有图形描述，用文字说明
-5. 只输出题目内容，不要添加解答
+3. 数学公式**只能用 LaTeX 格式**:
+   - 行内公式用 $...$ 包裹，如 $F = ma$
+   - 独立公式用 $$...$$ 包裹
+   - **严禁使用 MathML、HTML 标签或任何 XML 格式**
+4. 表格用 Markdown 表格语法还原（| 列1 | 列2 | 格式）
+5. 保持原始的段落结构、缩进、编号层级（如 (1)(2)(3)）
+6. 如有图形/图表，用 [图: 简要描述] 标注位置
+7. 只输出题目内容，不要添加解答或分析
 
 如果图片模糊或无法识别，请说明无法识别的部分。"""
 
@@ -48,6 +57,22 @@ SUBJECT_DETECTION_PROMPT = """请判断以下题目属于哪个学科。
 - 生物
 
 回答格式: 只输出学科名称，不要其他内容。"""
+
+
+MULTI_QUESTION_DETECTION_PROMPT = """请分析这张图片中包含的所有题目，输出 JSON 格式结果。
+
+分析要求:
+1. 识别每道题的题号（如"第1题"、"14."等）
+2. 判断每道题是否完整（题目文字是否被截断、是否缺少关键条件或问题）
+3. 用一句话概括每道题的内容（不超过20字）
+4. 最多识别5道题
+
+输出格式（严格 JSON，不要包含其他文字）:
+{"question_count": 数字, "questions": [{"index": 1, "label": "题号文字", "summary": "一句话概括", "complete": true}]}
+
+如果图片中没有可识别的题目，返回: {"question_count": 0, "questions": []}"""
+
+_DETECT_MAX_TOKENS = 512
 
 
 class OCRService:
@@ -91,6 +116,56 @@ class OCRService:
         )
         logger.info("题目识别完成: text_length=%d", len(result))
         return result
+
+    async def detect_questions(
+        self,
+        image_data: bytes,
+        media_type: str,
+    ) -> dict:
+        """检测图片中的题目数量和完整性。
+
+        Returns:
+            包含 question_count 和 questions 列表的字典
+        """
+        logger.info("开始多题检测: size=%d bytes", len(image_data))
+        raw = await self.llm.recognize_image(
+            image_data=image_data,
+            media_type=media_type,
+            prompt=MULTI_QUESTION_DETECTION_PROMPT,
+            max_tokens=_DETECT_MAX_TOKENS,
+        )
+        result = self._parse_detection_result(raw)
+        logger.info(
+            "多题检测完成: question_count=%d",
+            result.get("question_count", 0),
+        )
+        return result
+
+    def _parse_detection_result(self, raw: str) -> dict:
+        """解析 LLM 返回的多题检测 JSON，带容错。"""
+        import json
+        import re
+
+        # 尝试直接解析
+        try:
+            return json.loads(raw)
+        except json.JSONDecodeError:
+            pass
+        # 尝试提取 JSON 块
+        match = re.search(r'\{[\s\S]*\}', raw)
+        if match:
+            try:
+                return json.loads(match.group())
+            except json.JSONDecodeError:
+                pass
+        # 兜底：回退为单题
+        logger.warning("多题检测 JSON 解析失败，回退为单题: raw=%s", raw[:200])
+        return {
+            "question_count": 1,
+            "questions": [
+                {"index": 1, "label": "1", "summary": "", "complete": True}
+            ],
+        }
 
     async def detect_subject(self, question: str) -> str:
         """自动判定题目学科。

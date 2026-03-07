@@ -13,11 +13,15 @@ from aixue.dependencies import get_current_user
 from aixue.models.session import SolvingSession
 from aixue.models.user import User
 from aixue.schemas.session import (
+    DetectResponse,
     FollowUpResponse,
+    QuestionInfo,
     SessionDetail,
     SessionSummary,
     SolveResponse,
 )
+from aixue.services.llm_service import LLMService
+from aixue.services.ocr_service import OCRService
 from aixue.services.solver_service import SolverService
 
 logger = logging.getLogger(__name__)
@@ -35,6 +39,53 @@ def _user_profile(user: User) -> dict:
         "grade": user.grade,
         "subjects": user.subjects,
     }
+
+
+@router.post("/detect", response_model=DetectResponse)
+async def detect_questions(
+    image: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+) -> DetectResponse:
+    """检测图片中的题目数量和完整性。"""
+    image_data = await image.read()
+    if len(image_data) > settings.max_image_size:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"图片大小超过限制({settings.max_image_size // 1024 // 1024}MB)",
+        )
+    media_type = image.content_type or "image/png"
+
+    llm = LLMService()
+    ocr = OCRService(llm)
+    try:
+        result = await ocr.detect_questions(image_data, media_type)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(e),
+        ) from e
+
+    questions = result.get("questions", [])
+    question_count = result.get("question_count", len(questions))
+
+    # 限制最多 5 题
+    if question_count > 5:
+        questions = questions[:5]
+        msg = f"检测到 {question_count} 道题目，最多同时处理 5 道，建议分批拍照"
+    elif question_count == 0:
+        msg = "未检测到完整题目，请重新拍照确保题目完整"
+    else:
+        complete_count = sum(1 for q in questions if q.get("complete", False))
+        if complete_count == 0:
+            msg = "检测到的题目均不完整，请重新拍照确保题目完整"
+        else:
+            msg = f"检测到 {question_count} 道题目，请选择要解答的题目"
+
+    return DetectResponse(
+        question_count=question_count,
+        questions=[QuestionInfo(**q) for q in questions],
+        message=msg,
+    )
 
 
 @router.post("/solve", response_model=SolveResponse)

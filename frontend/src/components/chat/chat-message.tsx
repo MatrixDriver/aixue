@@ -3,9 +3,10 @@
 import { useState, useMemo } from "react";
 import katex from "katex";
 import { cn } from "@/lib/utils";
-import type { MessageRole } from "@/lib/types";
+import type { MessageRole, QuestionOption } from "@/lib/types";
 import OcrExpandPanel from "./ocr-expand-panel";
 import ImageLightbox from "./image-lightbox";
+import QuestionSelector from "./question-selector";
 
 interface ChatMessageProps {
   role: MessageRole;
@@ -15,6 +16,11 @@ interface ChatMessageProps {
   ocrText?: string;
   ocrLoading?: boolean;
   timestamp?: string;
+  type?: "text" | "question_selection";
+  questionOptions?: QuestionOption[];
+  onSelectQuestion?: (selected: QuestionOption) => void;
+  onSelectAll?: () => void;
+  selectionDisabled?: boolean;
 }
 
 /**
@@ -31,8 +37,42 @@ function escapeHtml(text: string): string {
 }
 
 export function renderWithLatex(text: string): string {
-  // 先转义 HTML 防止 XSS，再处理 LaTeX（KaTeX 自行生成安全 HTML）
-  let result = escapeHtml(text);
+  // 清理 MathML 标签（旧数据兼容：LLM 有时返回 MathML 而非 LaTeX）
+  let cleaned = text.replace(/<math[^>]*>[\s\S]*?<\/math>/gi, (match) => {
+    // 尝试提取 MathML 中的数字文本作为 fallback
+    const nums = match.replace(/<[^>]+>/g, "").trim();
+    return nums ? `$${nums}$` : "";
+  });
+  // 清理其他残留 HTML 标签（非 KaTeX 生成的）
+  cleaned = cleaned.replace(/<\/?(?:msub|msup|mfrac|mn|mi|mo|mrow|mover|munder|mtable|mtr|mtd|mtext|mspace|mpadded)[^>]*>/gi, "");
+
+  // 转义 HTML 防止 XSS，再处理 LaTeX（KaTeX 自行生成安全 HTML）
+  let result = escapeHtml(cleaned);
+
+  // 处理 Markdown 表格
+  result = result.replace(
+    /(?:^|\n)(\|.+\|)\n(\|[\s\-:|]+\|)\n((?:\|.+\|\n?)+)/g,
+    (_, header: string, _sep: string, body: string) => {
+      const headerCells = header.split("|").filter((c: string) => c.trim());
+      const rows = body.trim().split("\n").map((row: string) =>
+        row.split("|").filter((c: string) => c.trim())
+      );
+      let table = '<table class="border-collapse text-sm my-2"><thead><tr>';
+      headerCells.forEach((c: string) => {
+        table += `<th class="border border-gray-300 px-2 py-1 bg-gray-100">${escapeHtml(c.trim())}</th>`;
+      });
+      table += "</tr></thead><tbody>";
+      rows.forEach((cells: string[]) => {
+        table += "<tr>";
+        cells.forEach((c: string) => {
+          table += `<td class="border border-gray-300 px-2 py-1">${escapeHtml(c.trim())}</td>`;
+        });
+        table += "</tr>";
+      });
+      table += "</tbody></table>";
+      return table;
+    }
+  );
 
   // 处理块级公式 $$...$$
   result = result.replace(/\$\$([\s\S]*?)\$\$/g, (_, latex: string) => {
@@ -89,12 +129,17 @@ export default function ChatMessage({
   ocrText,
   ocrLoading,
   timestamp,
+  type,
+  questionOptions,
+  onSelectQuestion,
+  onSelectAll,
+  selectionDisabled,
 }: ChatMessageProps) {
   const isUser = role === "user";
   const [lightboxOpen, setLightboxOpen] = useState(false);
 
   const displayImageUrl = localImageUrl || imagePath;
-  const showTextBubble = !(content === "[图片]" && displayImageUrl);
+  const showTextBubble = !(content === "[图片]" && displayImageUrl) && type !== "question_selection";
 
   const renderedContent = useMemo(() => renderWithLatex(content), [content]);
 
@@ -170,6 +215,19 @@ export default function ChatMessage({
                 isUser && "prose-invert"
               )}
               dangerouslySetInnerHTML={{ __html: renderedContent }}
+            />
+          </div>
+        )}
+
+        {/* 选题按钮组 */}
+        {type === "question_selection" && questionOptions && onSelectQuestion && onSelectAll && (
+          <div className="inline-block rounded-2xl px-4 py-3 bg-white shadow-sm border border-gray-100">
+            <QuestionSelector
+              questions={questionOptions}
+              message={content}
+              onSelect={onSelectQuestion}
+              onSelectAll={onSelectAll}
+              disabled={selectionDisabled}
             />
           </div>
         )}

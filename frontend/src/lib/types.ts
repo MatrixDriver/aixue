@@ -82,6 +82,25 @@ export interface Message {
   localImageUrl?: string;
   ocrText?: string;
   created_at: string;
+  /** 消息类型：普通文本或选题 */
+  type?: "text" | "question_selection";
+  /** 多题检测结果（type 为 question_selection 时使用） */
+  questionOptions?: QuestionOption[];
+}
+
+/** 检测到的单道题目选项 */
+export interface QuestionOption {
+  index: number;
+  label: string;
+  summary: string;
+  complete: boolean;
+}
+
+/** 多题检测 API 响应 */
+export interface DetectResponse {
+  question_count: number;
+  questions: QuestionOption[];
+  message: string;
 }
 
 /** 解题会话摘要 */

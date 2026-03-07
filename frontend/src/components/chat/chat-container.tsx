@@ -5,7 +5,7 @@ import ChatMessage from "./chat-message";
 import ChatInput from "./chat-input";
 import ModeSwitch from "./mode-switch";
 import { Loader2 } from "lucide-react";
-import type { Message, SolveMode } from "@/lib/types";
+import type { Message, SolveMode, QuestionOption } from "@/lib/types";
 import { SUBJECTS } from "@/lib/utils";
 
 interface ChatContainerProps {
@@ -17,6 +17,9 @@ interface ChatContainerProps {
   sessionId: string | null;
   subject: string;
   onSubjectChange: (subject: string) => void;
+  onSelectQuestion?: (selected: QuestionOption) => void;
+  onSelectAll?: () => void;
+  selectionDisabled?: boolean;
 }
 
 export default function ChatContainer({
@@ -28,6 +31,9 @@ export default function ChatContainer({
   sessionId,
   subject,
   onSubjectChange,
+  onSelectQuestion,
+  onSelectAll,
+  selectionDisabled,
 }: ChatContainerProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -120,6 +126,11 @@ export default function ChatContainer({
                 ocrText={msg.ocrText}
                 ocrLoading={msg.role === "user" && !!msg.localImageUrl && msg.ocrText === undefined && loading}
                 timestamp={msg.created_at}
+                type={msg.type}
+                questionOptions={msg.questionOptions}
+                onSelectQuestion={onSelectQuestion}
+                onSelectAll={onSelectAll}
+                selectionDisabled={selectionDisabled}
               />
             ))}
 

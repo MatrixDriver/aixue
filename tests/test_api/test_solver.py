@@ -213,6 +213,32 @@ class TestFollowUpEndpoint:
 # 解题历史端点测试
 # ---------------------------------------------------------------------------
 
+class TestDetectEndpoint:
+    """多题检测 API 端点测试。"""
+
+    @pytest.mark.asyncio
+    async def test_detect_requires_auth(self, client):
+        """未认证请求返回 401。"""
+        resp = await client.post("/api/detect")
+        assert resp.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_detect_requires_image(self, client, auth_headers):
+        """缺少图片返回 422。"""
+        resp = await client.post("/api/detect", headers=auth_headers)
+        assert resp.status_code == 422
+
+    @pytest.mark.asyncio
+    async def test_detect_oversized_image(self, client, auth_headers, oversized_image):
+        """超大图片返回 413。"""
+        resp = await client.post(
+            "/api/detect",
+            headers=auth_headers,
+            files={"image": ("big.png", oversized_image, "image/png")},
+        )
+        assert resp.status_code == 413
+
+
 class TestSessionHistory:
 
     @pytest.mark.asyncio

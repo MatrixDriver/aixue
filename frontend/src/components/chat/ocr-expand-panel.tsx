@@ -57,7 +57,7 @@ export default function OcrExpandPanel({ imageUrl, ocrText, loading }: OcrExpand
               <div className="border-l-2 border-indigo-300 pl-3">
                 <p className="mb-1 text-xs font-medium text-gray-500">识别结果</p>
                 <div
-                  className="prose prose-sm max-w-none text-sm text-gray-700"
+                  className="prose prose-sm max-w-none text-sm text-gray-700 whitespace-pre-line leading-relaxed [&_table]:my-2 [&_th]:bg-gray-100 [&_td]:px-2 [&_td]:py-1"
                   dangerouslySetInnerHTML={{ __html: renderWithLatex(ocrText) }}
                 />
               </div>

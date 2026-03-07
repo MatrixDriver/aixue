@@ -15,6 +15,7 @@ import type {
   FollowUpResponse,
   SessionSummary,
   SessionDetail,
+  DetectResponse,
   DiagnosisResponse,
   DiagnosisReportSummary,
   DiagnosisReportDetail,
@@ -98,6 +99,15 @@ export async function getMyStats(): Promise<UserStats> {
 // ============================================================
 // 解题 API
 // ============================================================
+
+export async function detectQuestions(image: File): Promise<DetectResponse> {
+  const formData = new FormData();
+  formData.append("image", image);
+  const res = await api.post<DetectResponse>("/detect", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return res.data;
+}
 
 export async function solveQuestion(params: {
   image?: File;

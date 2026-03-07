@@ -16,6 +16,9 @@ export default function SolvePage() {
     setMode,
     setSubject,
     newChat,
+    selectQuestion,
+    selectAll,
+    selectionDisabled,
   } = useChat();
 
   return (
@@ -52,6 +55,9 @@ export default function SolvePage() {
           sessionId={sessionId}
           subject={subject}
           onSubjectChange={setSubject}
+          onSelectQuestion={selectQuestion}
+          onSelectAll={selectAll}
+          selectionDisabled={selectionDisabled}
         />
       </div>
     </div>

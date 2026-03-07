@@ -59,6 +59,23 @@ class SessionSummary(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class QuestionInfo(BaseModel):
+    """检测到的单道题目信息。"""
+
+    index: int
+    label: str
+    summary: str
+    complete: bool
+
+
+class DetectResponse(BaseModel):
+    """多题检测响应。"""
+
+    question_count: int
+    questions: list[QuestionInfo]
+    message: str
+
+
 class SessionDetail(BaseModel):
     """会话详情（含完整对话记录）。"""
 
