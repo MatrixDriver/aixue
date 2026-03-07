@@ -76,8 +76,12 @@ async def detect_questions(
         msg = "未检测到完整题目，请重新拍照确保题目完整"
     else:
         complete_count = sum(1 for q in questions if q.get("complete", False))
+        incomplete = [q.get("label", str(q.get("index", ""))) for q in questions if not q.get("complete", False)]
         if complete_count == 0:
             msg = "检测到的题目均不完整，请重新拍照确保题目完整"
+        elif incomplete:
+            incomplete_str = "、".join(f"第{l}题" for l in incomplete)
+            msg = f"检测到 {question_count} 道题目，其中{incomplete_str}不完整无法解答，请选择要解答的题目"
         else:
             msg = f"检测到 {question_count} 道题目，请选择要解答的题目"
 
