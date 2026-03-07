@@ -1,9 +1,9 @@
 ---
 description: "产品需求文档: AIXue MVP"
-status: completed
+status: archived
 created_at: 2026-03-02T17:45:00
 updated_at: 2026-03-02T19:00:00
-archived_at: null
+archived_at: 2026-03-06T22:50:00
 ---
 
 # AIXue MVP 产品需求文档

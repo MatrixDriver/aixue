@@ -79,6 +79,8 @@ export interface Message {
   role: MessageRole;
   content: string;
   image_path?: string;
+  localImageUrl?: string;
+  ocrText?: string;
   created_at: string;
 }
 

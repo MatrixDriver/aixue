@@ -38,6 +38,7 @@ export function useChat() {
         session_id: state.sessionId || "",
         role: "user",
         content: text || "[图片]",
+        localImageUrl: image ? URL.createObjectURL(image) : undefined,
         created_at: new Date().toISOString(),
       };
       setState((prev) => ({
@@ -48,6 +49,7 @@ export function useChat() {
       try {
         let aiMsg: Message;
         let newSessionId: string;
+        let ocrQuestion: string | undefined;
 
         if (state.sessionId) {
           // 追问模式
@@ -69,6 +71,7 @@ export function useChat() {
             mode: state.mode,
           });
           newSessionId = response.session_id;
+          ocrQuestion = response.question;
           aiMsg = {
             id: `ai-${Date.now()}`,
             session_id: response.session_id,
@@ -78,10 +81,14 @@ export function useChat() {
           };
         }
 
-        // 添加 AI 回复
+        // 添加 AI 回复，同时回填 OCR 文本到用户消息
         setState((prev) => ({
           ...prev,
-          messages: [...prev.messages, aiMsg],
+          messages: prev.messages.map((msg) =>
+            msg.id === userMsg.id && ocrQuestion !== undefined
+              ? { ...msg, ocrText: ocrQuestion }
+              : msg
+          ).concat([aiMsg]),
           sessionId: newSessionId,
           loading: false,
         }));
@@ -111,6 +118,12 @@ export function useChat() {
 
   // 开始新对话
   const newChat = useCallback(() => {
+    // 释放所有本地图片 Object URL
+    state.messages.forEach((msg) => {
+      if (msg.localImageUrl) {
+        URL.revokeObjectURL(msg.localImageUrl);
+      }
+    });
     setState({
       messages: [],
       sessionId: null,
@@ -119,7 +132,7 @@ export function useChat() {
       loading: false,
       error: null,
     });
-  }, [state.mode]);
+  }, [state.mode, state.messages]);
 
   // 加载已有对话
   const loadSession = useCallback(

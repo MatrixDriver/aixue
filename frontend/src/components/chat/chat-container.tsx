@@ -116,6 +116,9 @@ export default function ChatContainer({
                 role={msg.role}
                 content={msg.content}
                 imagePath={msg.image_path}
+                localImageUrl={msg.localImageUrl}
+                ocrText={msg.ocrText}
+                ocrLoading={msg.role === "user" && !!msg.localImageUrl && msg.ocrText === undefined && loading}
                 timestamp={msg.created_at}
               />
             ))}

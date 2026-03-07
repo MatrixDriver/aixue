@@ -1,14 +1,19 @@
 "use client";
 
-import { useMemo } from "react";
+import { useState, useMemo } from "react";
 import katex from "katex";
 import { cn } from "@/lib/utils";
 import type { MessageRole } from "@/lib/types";
+import OcrExpandPanel from "./ocr-expand-panel";
+import ImageLightbox from "./image-lightbox";
 
 interface ChatMessageProps {
   role: MessageRole;
   content: string;
   imagePath?: string;
+  localImageUrl?: string;
+  ocrText?: string;
+  ocrLoading?: boolean;
   timestamp?: string;
 }
 
@@ -17,9 +22,20 @@ interface ChatMessageProps {
  * - 块级公式: $$...$$
  * - 行内公式: $...$
  */
-function renderWithLatex(text: string): string {
-  // 先处理块级公式 $$...$$
-  let result = text.replace(/\$\$([\s\S]*?)\$\$/g, (_, latex: string) => {
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+export function renderWithLatex(text: string): string {
+  // 先转义 HTML 防止 XSS，再处理 LaTeX（KaTeX 自行生成安全 HTML）
+  let result = escapeHtml(text);
+
+  // 处理块级公式 $$...$$
+  result = result.replace(/\$\$([\s\S]*?)\$\$/g, (_, latex: string) => {
     try {
       return katex.renderToString(latex.trim(), {
         displayMode: true,
@@ -69,9 +85,16 @@ export default function ChatMessage({
   role,
   content,
   imagePath,
+  localImageUrl,
+  ocrText,
+  ocrLoading,
   timestamp,
 }: ChatMessageProps) {
   const isUser = role === "user";
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+
+  const displayImageUrl = localImageUrl || imagePath;
+  const showTextBubble = !(content === "[图片]" && displayImageUrl);
 
   const renderedContent = useMemo(() => renderWithLatex(content), [content]);
 
@@ -99,32 +122,57 @@ export default function ChatMessage({
           isUser ? "items-end text-right" : "items-start text-left"
         )}
       >
-        {/* 图片 */}
-        {imagePath && (
-          <img
-            src={imagePath}
-            alt="上传的题目"
-            className="max-h-60 rounded-lg border border-gray-200"
-          />
+        {/* 图片缩略图 + OCR 展开面板 + Lightbox */}
+        {displayImageUrl && (
+          <div className="space-y-1">
+            <img
+              src={displayImageUrl}
+              alt="上传的题目"
+              className="w-48 sm:w-60 max-h-72 rounded-lg border border-gray-200 object-cover cursor-pointer hover:opacity-90 transition-opacity"
+              onClick={() => setLightboxOpen(true)}
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = "";
+                (e.target as HTMLImageElement).alt = "图片已过期";
+              }}
+            />
+
+            {isUser && (
+              <OcrExpandPanel
+                imageUrl={displayImageUrl}
+                ocrText={ocrText}
+                loading={ocrLoading}
+              />
+            )}
+
+            {lightboxOpen && (
+              <ImageLightbox
+                src={displayImageUrl}
+                alt="题目大图"
+                onClose={() => setLightboxOpen(false)}
+              />
+            )}
+          </div>
         )}
 
         {/* 文字内容 */}
-        <div
-          className={cn(
-            "inline-block rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
-            isUser
-              ? "bg-indigo-600 text-white"
-              : "bg-white text-gray-800 shadow-sm border border-gray-100"
-          )}
-        >
+        {showTextBubble && (
           <div
             className={cn(
-              "prose prose-sm max-w-none",
-              isUser && "prose-invert"
+              "inline-block rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
+              isUser
+                ? "bg-indigo-600 text-white"
+                : "bg-white text-gray-800 shadow-sm border border-gray-100"
             )}
-            dangerouslySetInnerHTML={{ __html: renderedContent }}
-          />
-        </div>
+          >
+            <div
+              className={cn(
+                "prose prose-sm max-w-none",
+                isUser && "prose-invert"
+              )}
+              dangerouslySetInnerHTML={{ __html: renderedContent }}
+            />
+          </div>
+        )}
 
         {/* 时间戳 */}
         {timestamp && (

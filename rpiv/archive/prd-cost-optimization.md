@@ -1,9 +1,9 @@
 ---
 description: "产品需求文档: 图片预处理与OCR/推理拆分成本优化"
-status: completed
+status: archived
 created_at: 2026-03-06T22:30:00
 updated_at: 2026-03-06T22:45:00
-archived_at: null
+archived_at: 2026-03-06T22:50:00
 ---
 
 # 图片预处理与 OCR/推理拆分成本优化 PRD

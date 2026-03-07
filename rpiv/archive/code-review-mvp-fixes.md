@@ -1,9 +1,9 @@
 ---
 description: "代码审查报告: MVP 全栈实现及后续修复 (最近 5 次提交)"
-status: completed
+status: archived
 created_at: 2026-03-03T10:00:00
 updated_at: 2026-03-03T10:30:00
-archived_at: null
+archived_at: 2026-03-06T22:50:00
 ---
 
 # 代码审查报告

@@ -1,9 +1,9 @@
 ---
 description: "交付报告: 图片预处理与OCR/推理拆分成本优化"
-status: completed
+status: archived
 created_at: 2026-03-06T22:35:00
 updated_at: 2026-03-06T22:35:00
-archived_at: null
+archived_at: 2026-03-06T22:50:00
 related_files:
   - rpiv/requirements/prd-cost-optimization.md
   - rpiv/plans/plan-cost-optimization.md

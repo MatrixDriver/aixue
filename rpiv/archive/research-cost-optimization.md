@@ -1,6 +1,6 @@
 ---
 description: "技术可行性调研: 图片预处理 + OCR/推理拆分成本优化"
-status: completed
+status: archived
 created_at: 2026-03-06T11:00:00
 updated_at: 2026-03-06T11:00:00
 ---

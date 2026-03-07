@@ -1,9 +1,9 @@
 ---
 description: "测试策略: AIXue MVP"
-status: completed
+status: archived
 created_at: 2026-03-02T17:35:00
 updated_at: 2026-03-02T17:35:00
-archived_at: null
+archived_at: 2026-03-06T22:50:00
 ---
 
 # AIXue MVP 测试策略

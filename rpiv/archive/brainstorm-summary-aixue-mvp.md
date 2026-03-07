@@ -1,9 +1,9 @@
 ---
 description: "需求摘要: AIXue MVP"
-status: pending
+status: archived
 created_at: 2026-03-02T17:00:00
-updated_at: 2026-03-02T17:30:00
-archived_at: null
+updated_at: 2026-03-06T22:40:00
+archived_at: 2026-03-06T22:50:00
 ---
 
 ## 需求摘要
