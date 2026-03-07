@@ -15,6 +15,9 @@ COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
 
+# 缓存破坏标记
+ARG CACHE_BUST=1
+
 # 构建时注入环境变量
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
